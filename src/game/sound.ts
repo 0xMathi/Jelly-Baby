@@ -77,6 +77,36 @@ export class JellySound {
     gain.gain.value=.10*strength;noise.connect(filter).connect(gain).connect(out);noise.start(t);
     noise.onended=()=>{noise.disconnect();filter.disconnect();gain.disconnect();};
   }
+  /** Bright two-note pickup chime; `lift` raises the pitch a little for quick successive pickups. */
+  collect(lift=0) {
+    const ctx=this.context, out=this.master;
+    if(!ctx||!out||ctx.state==='closed'||this.muted) return;
+    const t=ctx.currentTime, shift=2**(Math.min(lift,6)/12);
+    for(const [note,start] of [[1318.5,0],[1975.5,.075]]) {
+      for(const [type,level] of [['square',.035],['sine',.09]] as const) {
+        const osc=ctx.createOscillator(), gain=ctx.createGain();
+        osc.type=type;osc.frequency.value=note*shift;
+        gain.gain.setValueAtTime(0,t+start);gain.gain.linearRampToValueAtTime(level,t+start+.004);
+        gain.gain.exponentialRampToValueAtTime(.0001,t+start+.42);
+        osc.connect(gain).connect(out);osc.start(t+start);osc.stop(t+start+.45);
+        osc.onended=()=>{osc.disconnect();gain.disconnect();};
+      }
+    }
+  }
+  /** Short falling tone when the round ends. */
+  roundOver() {
+    const ctx=this.context, out=this.master;
+    if(!ctx||!out||ctx.state==='closed'||this.muted) return;
+    const t=ctx.currentTime;
+    [784,659,523,784*2].forEach((note,i)=>{
+      const osc=ctx.createOscillator(), gain=ctx.createGain(), at=t+i*.12;
+      osc.type='triangle';osc.frequency.value=note;
+      gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.12,at+.01);
+      gain.gain.exponentialRampToValueAtTime(.0001,at+(i===3?.7:.2));
+      osc.connect(gain).connect(out);osc.start(at);osc.stop(at+.75);
+      osc.onended=()=>{osc.disconnect();gain.disconnect();};
+    });
+  }
   dispose() {
     this.abort.abort();this.master?.disconnect();this.compressor?.disconnect();
     const context=this.context;this.context=null;this.master=null;this.compressor=null;this.resumePromise=null;

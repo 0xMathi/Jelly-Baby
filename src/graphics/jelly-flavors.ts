@@ -8,6 +8,8 @@ export const JELLY_FLAVORS={
   strawberry:{surface:'#ffc2ce',absorption:[10,44,56]},
   blueberry:{surface:'#a9d9ff',absorption:[14,8,3]},
   lemon:{surface:'#fff06a',absorption:[8,8,112]},
+  grape:{surface:'#e0c2ff',absorption:[26,72,12]},
+  orange:{surface:'#ffd2a1',absorption:[5,30,118]},
 } as const satisfies Record<string,JellyFlavor>;
 
 export type JellyFlavorName=keyof typeof JELLY_FLAVORS;

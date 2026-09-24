@@ -1,5 +1,5 @@
 import './style.css';
-import { flavorPickerMarkup } from './game/flavor-picker.ts';
+import { fruitRushMarkup } from './game/fruit-rush.ts';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   <main id="viewport" aria-label="Jelly baby playground"></main>
@@ -11,13 +11,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
     <button id="reset" class="icon-button" aria-label="Reset jelly baby" title="Reset · R">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4.5 8a8 8 0 1 1-.1 8M4 3v6h6"/></svg>
     </button>
-    ${flavorPickerMarkup()}
   </nav>
   <footer class="desktop-hints" aria-label="Keyboard controls">
     <span><kbd>W</kbd><span class="key-row"><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></span><span class="hint-label">wander</span>
     <span class="separator"></span><kbd class="space-key">space</kbd><span class="hint-label">hop</span>
     <span class="separator"></span><svg class="mouse" viewBox="0 0 20 25" fill="none" stroke="currentColor"><rect x="3.5" y="1.5" width="13" height="21" rx="6.5"/><path d="M10 5v5"/></svg><span class="hint-label">orbit · grab</span>
   </footer>
+  ${fruitRushMarkup()}
+  <a class="credit" href="https://github.com/scottstts/Jelly-Baby" target="_blank" rel="noopener">built on jelly baby by scottstts · GPL-3.0</a>
   <div class="specimen"><span></span> lime &nbsp; / &nbsp; 7 cm of happiness</div>
   <div class="touch-controls" aria-label="Touch controls">
     <button class="joystick" data-joystick type="button" aria-label="Move">

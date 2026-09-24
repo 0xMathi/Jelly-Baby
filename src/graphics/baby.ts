@@ -30,10 +30,15 @@ export class Baby {
     this.update();
   }
   setFlavor(flavor:JellyFlavorName) {
-    const look=JELLY_FLAVORS[flavor],distance=this.jellyMaterial.attenuationDistance;
-    this.jellyMaterial.color.set(look.surface);
+    const look=JELLY_FLAVORS[flavor];
+    this.setLook(new THREE.Color(look.surface),look.absorption);
+  }
+  /** Direct colour control so flavour changes can be crossfaded frame by frame. */
+  setLook(surface:THREE.Color,absorption:readonly [number,number,number]) {
+    const distance=this.jellyMaterial.attenuationDistance;
+    this.jellyMaterial.color.copy(surface);
     this.jellyMaterial.attenuationColor.setRGB(
-      Math.exp(-look.absorption[0]*distance),Math.exp(-look.absorption[1]*distance),Math.exp(-look.absorption[2]*distance),
+      Math.exp(-absorption[0]*distance),Math.exp(-absorption[1]*distance),Math.exp(-absorption[2]*distance),
       THREE.LinearSRGBColorSpace,
     );
   }

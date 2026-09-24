@@ -13,8 +13,7 @@ import { createRenderer, resizeView } from '../graphics/renderer.ts';
 import { OpticalTransport } from '../graphics/transport.ts';
 import { createComposite } from '../graphics/composite.ts';
 import { FixedStepper } from './fixed-step.ts';
-import { JELLY_FLAVORS } from '../graphics/jelly-flavors.ts';
-import { FlavorPicker } from './flavor-picker.ts';
+import { FruitRush } from './fruit-rush.ts';
 
 export async function startGame(stage:(s:string)=>void,fail:(e:unknown)=>void) {
   stage('Starting WebGPU');
@@ -26,7 +25,8 @@ export async function startGame(stage:(s:string)=>void,fail:(e:unknown)=>void) {
   const scene=new THREE.Scene();
   scene.background=new THREE.Color('#e8d9c3');scene.fog=new THREE.Fog('#e8d9c3',2,12);
   const camera=new THREE.PerspectiveCamera(36,1,.001,40);
-  camera.position.set(.082,.126,.19);
+  // Pulled back from the original (.082,.126,.19) so nearby fruit is in view.
+  camera.position.set(.107,.164,.247);
   stage('Reading the light');
   const environment=await loadEnvironment(renderer,scene);
   stage('Making a little jelly');
@@ -36,9 +36,9 @@ export async function startGame(stage:(s:string)=>void,fail:(e:unknown)=>void) {
   const table=await makeTable(optics,environment);scene.add(table.mesh);
   const composite=createComposite(renderer,scene,camera);
   const rig=new Locomotion(body);
-  const flavorPicker=new FlavorPicker(flavor=>{
-    baby.setFlavor(flavor);optics.setAbsorption(JELLY_FLAVORS[flavor].absorption);
-  });
+  const game=new FruitRush(scene,camera,baby,optics,sound);
+  // Dev-only handle for browser playtests.
+  if(import.meta.env.DEV)Object.assign(window,{__jelly:{scene,camera,body,game}});
   rig.onContact=(speed,foot)=>sound.contact(speed,foot);
   const physicsClock=new FixedStepper(PHYS.step);
   let lastTime=0,disposed=false;
@@ -88,6 +88,7 @@ export async function startGame(stage:(s:string)=>void,fail:(e:unknown)=>void) {
       }
       baby.update(dt);
       input.update(dt);
+      game.update(dt,body.center);
       transport.follow();
       optics.update(renderer,body);
       table.mesh.position.x=body.center.x;table.mesh.position.z=body.center.z;
@@ -99,9 +100,9 @@ export async function startGame(stage:(s:string)=>void,fail:(e:unknown)=>void) {
   const dispose=()=>{
     if(disposed)return;disposed=true;
     void renderer.setAnimationLoop(null);input.dispose();sound.dispose();transport.dispose();resizeObserver.disconnect();cancelAnimationFrame(resizeFrame);
-    flavorPicker.dispose();composite.dispose();baby.dispose();table.dispose();environment.dispose();optics.dispose();renderer.dispose();
+    game.dispose();composite.dispose();baby.dispose();table.dispose();environment.dispose();optics.dispose();renderer.dispose();
   };
   window.addEventListener('pagehide',event=>{if(!event.persisted)dispose();});
   if(import.meta.hot)import.meta.hot.dispose(dispose);
-  return {stop:()=>{disposed=true;input.clear();flavorPicker.dispose();sound.dispose();transport.dispose();void renderer.setAnimationLoop(null);}};
+  return {stop:()=>{disposed=true;input.clear();game.dispose();sound.dispose();transport.dispose();void renderer.setAnimationLoop(null);}};
 }
