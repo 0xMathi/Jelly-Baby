@@ -1,92 +1,92 @@
 {
-  "sourceHash": "c34836f03835c578ff5686fb4511ad971c5c269dad049ab03d075155b081dad3",
-  "scale": 0.031051516525765033,
+  "sourceHash": "468a8930b6241e08d7ea3cc51787bafdfcb7045a5281494b44ff5bfd81dc6bcf",
+  "scale": 0.0333088128143073,
   "bottom": -1.0399999618530273,
-  "volume": 0.00018100222097291234,
+  "volume": 0.00022014473023610287,
   "layout": {
     "positions": {
       "offset": 0,
-      "length": 216702,
+      "length": 210786,
       "type": "Float32Array"
     },
     "normals": {
-      "offset": 866808,
-      "length": 216702,
+      "offset": 843144,
+      "length": 210786,
       "type": "Float32Array"
     },
     "indices": {
-      "offset": 1733616,
-      "length": 433392,
+      "offset": 1686288,
+      "length": 421560,
       "type": "Uint32Array"
     },
     "particles": {
-      "offset": 3467184,
-      "length": 2940,
+      "offset": 3372528,
+      "length": 3378,
       "type": "Float64Array"
     },
     "tets": {
-      "offset": 3490704,
-      "length": 16104,
+      "offset": 3399552,
+      "length": 18936,
       "type": "Uint32Array"
     },
     "volumes": {
-      "offset": 3555120,
-      "length": 4026,
+      "offset": 3475296,
+      "length": 4734,
       "type": "Float64Array"
     },
     "bindingIds": {
-      "offset": 3587328,
-      "length": 288936,
+      "offset": 3513168,
+      "length": 281048,
       "type": "Uint32Array"
     },
     "bindingWeights": {
-      "offset": 4743072,
-      "length": 288936,
+      "offset": 4637360,
+      "length": 281048,
       "type": "Float64Array"
     },
     "tetIds": {
-      "offset": 7054560,
-      "length": 72234,
+      "offset": 6885744,
+      "length": 70262,
       "type": "Uint32Array"
     },
     "contacts": {
-      "offset": 7343496,
-      "length": 2138,
+      "offset": 7166792,
+      "length": 2418,
       "type": "Uint32Array"
     },
     "opticalPositions": {
-      "offset": 7352048,
-      "length": 30270,
+      "offset": 7176464,
+      "length": 29490,
       "type": "Float32Array"
     },
     "opticalNormals": {
-      "offset": 7473128,
-      "length": 30270,
+      "offset": 7294424,
+      "length": 29490,
       "type": "Float32Array"
     },
     "opticalIndices": {
-      "offset": 7594208,
-      "length": 60528,
+      "offset": 7412384,
+      "length": 58968,
       "type": "Uint32Array"
     },
     "opticalBindingIds": {
-      "offset": 7836320,
-      "length": 40360,
+      "offset": 7648256,
+      "length": 39320,
       "type": "Uint32Array"
     },
     "opticalBindingWeights": {
-      "offset": 7997760,
-      "length": 40360,
+      "offset": 7805536,
+      "length": 39320,
       "type": "Float64Array"
     },
     "thicknessIds": {
-      "offset": 8320640,
-      "length": 216702,
+      "offset": 8120096,
+      "length": 210786,
       "type": "Uint32Array"
     },
     "thicknessWeights": {
-      "offset": 9187448,
-      "length": 216702,
+      "offset": 8963240,
+      "length": 210786,
       "type": "Float32Array"
     }
   }

@@ -34,12 +34,12 @@ export class BabyFace {
     };
     const oval=(x:number,y:number,z:number)=>new THREE.SphereGeometry(1,40,24,0,Math.PI*2,0,Math.PI/2).rotateX(Math.PI/2).scale(x,y,z);
     for(const sign of [-1,1]) {
-      add(oval(.00325,.0043,.0015),eye,sign*.0095,.0465,.00010,'eye');
-      add(oval(.0043,.0024,.00016),blush,sign*.014,.0388,.00010,'blush');
+      add(oval(.0037,.0056,.0017),eye,sign*.0102,.0458,.00010,'eye');
+      add(oval(.0054,.0029,.00016),blush,sign*.0168,.0372,.00010,'blush');
       const brow=new THREE.CatmullRomCurve3([
         new THREE.Vector3(-.0021,-.0005,0),new THREE.Vector3(0,.00045,0),new THREE.Vector3(.0021,-.0002,0),
       ]);
-      add(new THREE.TubeGeometry(brow,16,.00048,8,false),mouth,sign*.0097,.0542,.00025,'brow');
+      add(new THREE.TubeGeometry(brow,16,.00048,8,false),mouth,sign*.0104,.0566,.00025,'brow');
     }
     const smile=new THREE.Shape();
     smile.moveTo(-.0046,.0019);smile.bezierCurveTo(-.002,.0006,.002,.0006,.0046,.002);

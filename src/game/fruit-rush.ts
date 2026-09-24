@@ -141,12 +141,12 @@ export class FruitRush {
         else if(distance>FORGET_BEYOND)fruit.collectedFor=0;
         const grow=easeOutBack(Math.min(1,fruit.age/.38)),breathe=Math.sin(fruit.age*2.6+fruit.phase)*.025;
         fruit.fruit.scale.set(grow*(1-breathe*.5),grow*(1+breathe),grow*(1-breathe*.5));
-        fruit.shadow.scale.setScalar(FRUITS[fruit.name].radius*3.4*Math.min(1,grow));
+        fruit.shadow.scale.setScalar(FRUITS[fruit.name].radius*2.6*Math.min(1,grow));
       } else {
         // Shrink into the jelly (or just vanish when forgotten or the round ended).
         fruit.collectedFor+=dt;
         const t=Math.min(1,fruit.collectedFor/.2),s=(1-t)*(1+t*.4);
-        fruit.fruit.scale.setScalar(s);fruit.shadow.scale.setScalar(FRUITS[fruit.name].radius*3.4*(1-t));
+        fruit.fruit.scale.setScalar(s);fruit.shadow.scale.setScalar(FRUITS[fruit.name].radius*2.6*(1-t));
         if(distance<FORGET_BEYOND)fruit.root.position.set(fruit.root.position.x-dx*t*.35,fruit.root.position.y,fruit.root.position.z-dz*t*.35);
         if(t>=1){this.group.remove(fruit.root);this.live.splice(i,1);}
       }

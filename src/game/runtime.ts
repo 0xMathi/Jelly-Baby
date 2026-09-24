@@ -14,6 +14,7 @@ import { OpticalTransport } from '../graphics/transport.ts';
 import { createComposite } from '../graphics/composite.ts';
 import { FixedStepper } from './fixed-step.ts';
 import { FruitRush } from './fruit-rush.ts';
+import { loadFruits } from '../graphics/fruits.ts';
 
 export async function startGame(stage:(s:string)=>void,fail:(e:unknown)=>void) {
   stage('Starting WebGPU');
@@ -36,6 +37,8 @@ export async function startGame(stage:(s:string)=>void,fail:(e:unknown)=>void) {
   const table=await makeTable(optics,environment);scene.add(table.mesh);
   const composite=createComposite(renderer,scene,camera);
   const rig=new Locomotion(body);
+  stage('Picking fruit');
+  await loadFruits();
   const game=new FruitRush(scene,camera,baby,optics,sound);
   // Dev-only handle for browser playtests.
   if(import.meta.env.DEV)Object.assign(window,{__jelly:{scene,camera,body,game}});

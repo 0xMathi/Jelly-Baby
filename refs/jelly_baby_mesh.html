@@ -63,14 +63,13 @@ function smoothIntersection(a, b, k) {
 }
 
 const C = {
-  body:      V( 0.00,  0.10, 0.00),
-  belly:     V( 0.00, -0.42, 0.05),
-  crown:     V( 0.00,  0.68, 0.00),
-  leftFoot:  V(-0.73, -0.84, 0.02),
-  midFoot:   V( 0.00, -0.86, 0.02),
-  rightFoot: V( 0.73, -0.84, 0.02),
-  leftArm:   V(-1.30, -0.04, 0.00),
-  rightArm:  V( 1.30, -0.04, 0.00),
+  body:      V( 0.00,  0.06, 0.00),
+  belly:     V( 0.00, -0.46, 0.04),
+  crown:     V( 0.00,  0.62, 0.00),
+  leftFoot:  V(-0.52, -0.88, 0.22),
+  rightFoot: V( 0.52, -0.88, 0.22),
+  leftArm:   V(-1.26, -0.10, 0.08),
+  rightArm:  V( 1.26, -0.10, 0.08),
 };
 
 function blobEllipsoid(p, c, r, strength = 1.0, sharpness = 1.7) {
@@ -81,31 +80,24 @@ function blobEllipsoid(p, c, r, strength = 1.0, sharpness = 1.7) {
 }
 
 function jellySDF(p) {
-  // A Gaussian metaball field is smooth to every derivative. Unlike a chain of
-  // smooth-min unions, there is no shoulder/kink where one primitive hands off
-  // to another. The upper body therefore reads as one thick-liquid glob from
-  // the front, side and back.
+  // Fruit rush variant: a rounder, puff-ball silhouette with two oval feet and
+  // short stubby arms, built from the same smooth Gaussian metaball field.
   let f = 0.0;
 
-  // Main rounded glob. X and Z are deliberately close in scale so the creature
-  // is genuinely round in depth instead of looking like a flattened extrusion.
-  f += blobEllipsoid(p, C.body,  V(1.12, 1.17, 1.00), 1.25, 1.60);
+  // Near-spherical main glob.
+  f += blobEllipsoid(p, C.body,  V(1.28, 1.08, 1.14), 1.25, 1.60);
+  f += blobEllipsoid(p, C.belly, V(1.30, 0.66, 1.08), 0.62, 1.70);
+  f += blobEllipsoid(p, C.crown, V(1.02, 0.56, 0.96), 0.30, 1.70);
 
-  // Puffy lower mass and rounded crown subtly bias the silhouette without
-  // introducing any curvature discontinuity.
-  f += blobEllipsoid(p, C.belly, V(1.28, 0.74, 1.04), 0.72, 1.70);
-  f += blobEllipsoid(p, C.crown, V(0.98, 0.62, 0.94), 0.45, 1.70);
+  // Two plump oval feet, slightly forward like little slippers.
+  f += blobEllipsoid(p, C.leftFoot,  V(0.52, 0.28, 0.70), 0.52, 1.90);
+  f += blobEllipsoid(p, C.rightFoot, V(0.52, 0.28, 0.70), 0.52, 1.90);
 
-  // Soft jelly skirt / feet.
-  f += blobEllipsoid(p, C.leftFoot,  V(0.57, 0.36, 0.78), 0.42, 1.90);
-  f += blobEllipsoid(p, C.midFoot,   V(0.58, 0.30, 0.80), 0.38, 1.90);
-  f += blobEllipsoid(p, C.rightFoot, V(0.57, 0.36, 0.78), 0.42, 1.90);
-
-  // Arms are also metaballs, so their roots melt continuously into the body.
-  f += blobEllipsoid(p, C.leftArm,  V(0.40, 0.34, 0.38), 0.75, 1.75);
-  f += blobEllipsoid(p, V(-1.06, -0.14, 0.00), V(0.34, 0.44, 0.42), 0.40, 1.75);
-  f += blobEllipsoid(p, C.rightArm, V(0.40, 0.34, 0.38), 0.75, 1.75);
-  f += blobEllipsoid(p, V( 1.06, -0.14, 0.00), V(0.34, 0.44, 0.42), 0.40, 1.75);
+  // Short stubby arms that melt into the sides.
+  f += blobEllipsoid(p, C.leftArm,  V(0.30, 0.27, 0.30), 0.70, 1.75);
+  f += blobEllipsoid(p, V(-1.04, -0.12, 0.06), V(0.30, 0.32, 0.34), 0.36, 1.75);
+  f += blobEllipsoid(p, C.rightArm, V(0.30, 0.27, 0.30), 0.70, 1.75);
+  f += blobEllipsoid(p, V( 1.04, -0.12, 0.06), V(0.30, 0.32, 0.34), 0.36, 1.75);
 
   // The iso-value defines the actual liquid surface. Return negative inside to
   // preserve the polygonizer's existing sign convention.
