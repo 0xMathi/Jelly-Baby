@@ -2,13 +2,13 @@ import './style.css';
 import { fruitRushMarkup } from './game/fruit-rush.ts';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
-  <main id="viewport" aria-label="Jelly baby playground"></main>
-  <header class="masthead"><span class="eyebrow">a small, soft world</span><h1>jelly baby<span>.</span></h1></header>
+  <main id="viewport" aria-label="Fruit rush playground"></main>
+  <header class="masthead"><span class="eyebrow">a small, soft world</span><h1>fruit rush<span>.</span></h1></header>
   <nav class="actions" aria-label="Game controls">
     <button id="sound" class="icon-button" aria-label="Mute sound" aria-pressed="false" title="Sound">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path class="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-off" d="m15 9 6 6m0-6-6 6"/></svg>
     </button>
-    <button id="reset" class="icon-button" aria-label="Reset jelly baby" title="Reset · R">
+    <button id="reset" class="icon-button" aria-label="Reset jelly" title="Reset · R">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4.5 8a8 8 0 1 1-.1 8M4 3v6h6"/></svg>
     </button>
   </nav>
@@ -41,7 +41,7 @@ function fail(reason:unknown) {
   const fatal=document.querySelector<HTMLPreElement>('#fatal')!;fatal.hidden=false;
   fatal.textContent=`${stage}\n${error.message}\n\nViewport: ${innerWidth} × ${innerHeight} · DPR ${devicePixelRatio}\n${navigator.userAgent}`;
   document.querySelector<HTMLButtonElement>('#retry')!.hidden=false;
-  console.error(`[Jelly Baby / ${stage}]`,error);
+  console.error(`[Fruit Rush / ${stage}]`,error);
 }
 window.addEventListener('error',event=>fail(event.error||event.message));
 window.addEventListener('unhandledrejection',event=>fail(event.reason));
