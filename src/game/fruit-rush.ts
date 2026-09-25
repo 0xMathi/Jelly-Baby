@@ -7,20 +7,35 @@ import type { JellySound } from './sound.ts';
 
 const ROUND_SECONDS=60;
 const LIVE_FRUITS=5;
-const SPAWN_MIN=.10, SPAWN_MAX=.30, SPAWN_SPREAD=1.25, FORGET_BEYOND=.9;
+const SPAWN_MIN=.09, SPAWN_MAX=.26, SPAWN_SPREAD=.9, FORGET_BEYOND=.9;
 const JELLY_REACH=.048;
 const SCORES_KEY='fruit-rush:scores';
 
 type Live={name:FruitName;root:THREE.Group;fruit:THREE.Group;shadow:THREE.Mesh;age:number;collectedFor:number;phase:number};
 type Score={score:number;at:number};
-type State='ready'|'playing'|'over';
+type State='free'|'playing';
+
+const fruitDots=FRUIT_NAMES.map(name=>`<span style="background:${FRUITS[name].color}"></span>`).join('');
 
 export function fruitRushMarkup() {
   return `<div class="hud" hidden><span class="hud-time">1:00</span><span class="hud-dot"></span><span class="hud-score">0</span></div>
+  <button class="round-open" type="button" hidden><span class="round-open-dots">${fruitDots}</span>play fruit rush <kbd>enter</kbd></button>
   <section class="round-card" aria-live="polite">
-    <p class="eyebrow round-eyebrow">60 seconds</p>
-    <h2 class="round-title">Fruit rush</h2>
-    <p class="round-text">Wander, hop and gather fruit. Every bite changes the flavour.</p>
+    <button class="round-close" type="button" aria-label="Close and just wander" title="Close · esc">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <div class="round-intro">
+      <p class="eyebrow">60 seconds</p>
+      <h2 class="round-title">Fruit rush</h2>
+      <div class="round-dots" aria-hidden="true">${fruitDots}</div>
+      <p class="round-text">Wander, hop and gather fruit.<br>Every bite changes the flavour.</p>
+    </div>
+    <div class="round-result" hidden>
+      <p class="eyebrow">time's up</p>
+      <p class="round-best" hidden>new best!</p>
+      <p class="round-score"><span class="round-score-value">0</span><span class="round-score-unit">fruits</span></p>
+      <ul class="round-tally"></ul>
+    </div>
     <ol class="round-scores" hidden></ol>
     <button class="round-start" type="button">Start <kbd>enter</kbd></button>
   </section>`;
@@ -29,9 +44,10 @@ export function fruitRushMarkup() {
 function easeOutBack(t:number) {const c=1.9;return 1+(c+1)*(t-1)**3+c*(t-1)**2;}
 
 export class FruitRush {
-  private state:State='ready';
+  private state:State='free';
   private timeLeft=ROUND_SECONDS;
   private score=0;
+  private tally=new Map<FruitName,number>();
   private streak=0;
   private sinceLast=99;
   private readonly live:Live[]=[];
@@ -45,6 +61,7 @@ export class FruitRush {
   private readonly scoreLabel=this.hud.querySelector<HTMLSpanElement>('.hud-score')!;
   private readonly dot=this.hud.querySelector<HTMLSpanElement>('.hud-dot')!;
   private readonly card=document.querySelector<HTMLElement>('.round-card')!;
+  private readonly openButton=document.querySelector<HTMLButtonElement>('.round-open')!;
   private readonly abort=new AbortController();
   private readonly baby:Baby;
   private readonly optics:RefractiveLightField;
@@ -55,31 +72,49 @@ export class FruitRush {
     this.camera=camera;this.baby=baby;this.optics=optics;this.sound=sound;
     scene.add(this.group);
     const {signal}=this.abort;
-    this.card.querySelector('.round-start')!.addEventListener('click',event=>{
-      this.start();if((event as MouseEvent).detail>0)(event.currentTarget as HTMLButtonElement).blur();
+    const click=(selector:string,action:()=>void)=>document.querySelector(selector)!.addEventListener('click',event=>{
+      action();if((event as MouseEvent).detail>0)(event.currentTarget as HTMLButtonElement).blur();
     },{signal});
-    window.addEventListener('keydown',event=>{if(event.code==='Enter'&&this.state!=='playing'&&!event.repeat)this.start();},{signal});
+    click('.round-start',()=>this.start());
+    click('.round-open',()=>this.start());
+    click('.round-close',()=>this.closeCard());
+    window.addEventListener('keydown',event=>{
+      if(event.repeat||this.state==='playing')return;
+      if(event.code==='Enter')this.start();
+      if(event.code==='Escape')this.closeCard();
+    },{signal});
     this.renderScores(this.loadScores(),-1);
   }
 
   private start() {
-    this.state='playing';this.timeLeft=ROUND_SECONDS;this.score=0;this.streak=0;
-    this.card.hidden=true;this.hud.hidden=false;this.scoreLabel.textContent='0';
+    this.state='playing';this.timeLeft=ROUND_SECONDS;this.score=0;this.streak=0;this.tally.clear();
+    this.card.hidden=true;this.openButton.hidden=true;this.hud.hidden=false;this.scoreLabel.textContent='0';
     void this.sound.unlock().catch(()=>{});
   }
 
+  /** Free play: the card goes away, fruit keeps coming, nothing is scored. */
+  private closeCard() {
+    if(this.card.hidden)return;
+    this.card.hidden=true;this.openButton.hidden=false;
+  }
+
   private finish() {
-    this.state='over';this.hud.hidden=true;
+    this.state='free';this.hud.hidden=true;
     for(const fruit of this.live)if(fruit.collectedFor<0)fruit.collectedFor=0;
     const scores=this.loadScores(),entry={score:this.score,at:Date.now()};
     scores.push(entry);scores.sort((a,b)=>b.score-a.score||a.at-b.at);scores.length=Math.min(scores.length,5);
     this.saveScores(scores);
-    this.card.querySelector('.round-eyebrow')!.textContent='time!';
-    this.card.querySelector('.round-title')!.textContent=`${this.score} fruit${this.score===1?'':'s'}`;
-    this.card.querySelector('.round-text')!.textContent=this.score>0&&scores[0]===entry?'A new best. Juicy.':'Best rounds on this device';
+    this.card.querySelector<HTMLElement>('.round-intro')!.hidden=true;
+    this.card.querySelector<HTMLElement>('.round-result')!.hidden=false;
+    this.card.querySelector<HTMLElement>('.round-best')!.hidden=!(this.score>0&&scores[0]===entry);
+    this.card.querySelector('.round-score-value')!.textContent=String(this.score);
+    this.card.querySelector('.round-score-unit')!.textContent=this.score===1?'fruit':'fruits';
+    this.card.querySelector('.round-tally')!.innerHTML=FRUIT_NAMES.filter(name=>this.tally.has(name)).map(name=>
+      `<li><span style="background:${FRUITS[name].color}"></span>${this.tally.get(name)} ${FRUITS[name].label}</li>`).join('');
     this.renderScores(scores,scores.indexOf(entry));
     this.card.querySelector('.round-start')!.innerHTML='Play again <kbd>enter</kbd>';
-    this.card.hidden=false;this.sound.roundOver();
+    this.card.hidden=false;this.card.classList.remove('pop');void this.card.offsetWidth;this.card.classList.add('pop');
+    this.sound.roundOver();
   }
 
   private loadScores():Score[] {
@@ -92,7 +127,7 @@ export class FruitRush {
   private renderScores(scores:Score[],highlight:number) {
     const list=this.card.querySelector<HTMLOListElement>('.round-scores')!;
     list.hidden=scores.length===0;
-    list.innerHTML=scores.map((s,i)=>`<li${i===highlight?' class="current"':''}><span>${s.score}</span><time>${new Date(s.at).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</time></li>`).join('');
+    list.innerHTML=scores.map((s,i)=>`<li${i===highlight?' class="current"':''}><span>${s.score} <small>fruit${s.score===1?'':'s'}</small></span><time>${new Date(s.at).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</time></li>`).join('');
   }
 
   private spawn(center:THREE.Vector3) {
@@ -112,7 +147,11 @@ export class FruitRush {
   }
 
   private collect(fruit:Live) {
-    fruit.collectedFor=0;this.score++;this.scoreLabel.textContent=String(this.score);
+    fruit.collectedFor=0;
+    if(this.state==='playing') {
+      this.score++;this.scoreLabel.textContent=String(this.score);
+      this.tally.set(fruit.name,(this.tally.get(fruit.name)??0)+1);
+    }
     this.streak=this.sinceLast<1.2?this.streak+1:0;this.sinceLast=0;
     this.sound.collect(this.streak);
     const look=JELLY_FLAVORS[FRUITS[fruit.name].flavor];
@@ -131,13 +170,14 @@ export class FruitRush {
       this.time.textContent=`${Math.floor(shown/60)}:${String(shown%60).padStart(2,'0')}`;
       this.hud.classList.toggle('hurry',this.timeLeft<10);
       if(this.timeLeft<=0)this.finish();
-      else while(this.live.filter(f=>f.collectedFor<0).length<LIVE_FRUITS)this.spawn(center);
     }
+    // Fruit keeps coming during a round and in free play; the open card keeps the table clean.
+    if(this.state==='playing'||this.card.hidden)while(this.live.filter(f=>f.collectedFor<0).length<LIVE_FRUITS)this.spawn(center);
     for(let i=this.live.length-1;i>=0;i--) {
       const fruit=this.live[i];fruit.age+=dt;
       const dx=fruit.root.position.x-center.x,dz=fruit.root.position.z-center.z,distance=Math.hypot(dx,dz);
       if(fruit.collectedFor<0) {
-        if(this.state==='playing'&&distance<JELLY_REACH+FRUITS[fruit.name].radius*.5)this.collect(fruit);
+        if(distance<JELLY_REACH+FRUITS[fruit.name].radius*.5)this.collect(fruit);
         else if(distance>FORGET_BEYOND)fruit.collectedFor=0;
         const grow=easeOutBack(Math.min(1,fruit.age/.38)),breathe=Math.sin(fruit.age*2.6+fruit.phase)*.025;
         fruit.fruit.scale.set(grow*(1-breathe*.5),grow*(1+breathe),grow*(1-breathe*.5));

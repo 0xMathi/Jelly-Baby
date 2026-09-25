@@ -26,8 +26,7 @@ export async function startGame(stage:(s:string)=>void,fail:(e:unknown)=>void) {
   const scene=new THREE.Scene();
   scene.background=new THREE.Color('#e8d9c3');scene.fog=new THREE.Fog('#e8d9c3',2,12);
   const camera=new THREE.PerspectiveCamera(36,1,.001,40);
-  // Pulled back from the original (.082,.126,.19) so nearby fruit is in view.
-  camera.position.set(.107,.164,.247);
+  camera.position.set(.082,.126,.19);
   stage('Reading the light');
   const environment=await loadEnvironment(renderer,scene);
   stage('Making a little jelly');
