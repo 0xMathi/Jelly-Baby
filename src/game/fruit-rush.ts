@@ -21,25 +21,19 @@ const fruitDots=FRUIT_NAMES.map(name=>`<span style="background:${FRUITS[name].co
 export function fruitRushMarkup() {
   return `<div class="hud" hidden><span class="hud-time">1:00</span><span class="hud-dot"></span><span class="hud-score">0</span></div>
   <div class="combo" aria-live="polite"></div>
-  <button class="round-open" type="button" hidden><span class="round-open-dots">${fruitDots}</span>play fruit rush <kbd>enter</kbd></button>
-  <section class="round-card" aria-live="polite">
+  <button class="round-open" type="button" title="60 seconds of gathering. Chain five quickly for a combo."><span class="round-open-dots">${fruitDots}</span>play fruit rush <kbd>enter</kbd></button>
+  <section class="round-card" aria-live="polite" hidden>
     <button class="round-close" type="button" aria-label="Close and just wander" title="Close · esc">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 6l12 12M18 6 6 18"/></svg>
     </button>
-    <div class="round-intro">
-      <p class="eyebrow">60 seconds</p>
-      <h2 class="round-title">Fruit rush</h2>
-      <div class="round-dots" aria-hidden="true">${fruitDots}</div>
-      <p class="round-text">Wander, hop and gather fruit.<br>Every bite changes the flavour.<br>Chain five quickly for a combo.</p>
-    </div>
-    <div class="round-result" hidden>
+    <div class="round-result">
       <p class="eyebrow">time's up</p>
       <p class="round-best" hidden>new best!</p>
       <p class="round-score"><span class="round-score-value">0</span><span class="round-score-unit">fruits</span></p>
       <ul class="round-tally"></ul>
     </div>
     <ol class="round-scores" hidden></ol>
-    <button class="round-start" type="button">Start <kbd>enter</kbd></button>
+    <button class="round-start" type="button">Play again <kbd>enter</kbd></button>
   </section>`;
 }
 
@@ -109,8 +103,6 @@ export class FruitRush {
     const scores=this.loadScores(),entry={score:this.score,at:Date.now()};
     scores.push(entry);scores.sort((a,b)=>b.score-a.score||a.at-b.at);scores.length=Math.min(scores.length,5);
     this.saveScores(scores);
-    this.card.querySelector<HTMLElement>('.round-intro')!.hidden=true;
-    this.card.querySelector<HTMLElement>('.round-result')!.hidden=false;
     this.card.querySelector<HTMLElement>('.round-best')!.hidden=!(this.score>0&&scores[0]===entry);
     this.card.querySelector('.round-score-value')!.textContent=String(this.score);
     this.card.querySelector('.round-score-unit')!.textContent=this.score===1?'point':'points';
@@ -118,7 +110,6 @@ export class FruitRush {
       `<li><span style="background:${FRUITS[name].color}"></span>${this.tally.get(name)} ${FRUITS[name].label}</li>`).join('')+
       (this.bonus?`<li class="round-tally-bonus">+${this.bonus} combo bonus</li>`:'');
     this.renderScores(scores,scores.indexOf(entry));
-    this.card.querySelector('.round-start')!.innerHTML='Play again <kbd>enter</kbd>';
     this.card.hidden=false;this.card.classList.remove('pop');void this.card.offsetWidth;this.card.classList.add('pop');
     this.sound.roundOver();
   }
