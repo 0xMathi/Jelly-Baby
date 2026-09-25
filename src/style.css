@@ -77,6 +77,7 @@ h2{font:italic 39px Georgia,serif;letter-spacing:-1.6px;font-weight:400;margin:0
 .round-tally{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:16px 0 22px;padding:0}
 .round-tally li{display:flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:30px;background:#fff9;font-size:13px}
 .round-tally span{width:14px;height:14px;border-radius:50%;box-shadow:inset -2px -2px 4px #0003,inset 2px 2px 3px #fff6}
+.round-tally li.round-tally-bonus{background:#526632;color:#f8f7ec;padding:6px 12px;font-style:italic}
 .round-scores{list-style:none;counter-reset:rank;margin:0 0 26px;padding:0;font-size:15px;text-align:left}
 .round-scores li{counter-increment:rank;display:flex;align-items:baseline;gap:14px;padding:9px 14px;border-radius:14px}
 .round-scores li+li{border-top:1px solid #4e573b14}
@@ -99,3 +100,9 @@ h2{font:italic 39px Georgia,serif;letter-spacing:-1.6px;font-weight:400;margin:0
 @media(pointer:coarse){.round-start kbd,.round-open kbd{display:none}.credit{bottom:auto;top:calc(max(24px,env(safe-area-inset-top)) + 46px);right:max(20px,env(safe-area-inset-right))}}
 @media(prefers-reduced-motion:reduce){.hud.bump,.round-card.pop,.round-dots span{animation:none}.round-close:hover{transform:none}}
 @media(pointer:coarse),(max-width:700px){.hud,.round-open{top:calc(max(25px,env(safe-area-inset-top)) + 70px);height:38px;font-size:19px}.round-card{padding:34px 22px 24px;border-radius:26px}.round-title{font-size:50px}.round-score-value{font-size:104px}}
+.combo{position:fixed;left:50%;top:40%;z-index:2;display:flex;flex-direction:column;align-items:center;pointer-events:none;user-select:none;opacity:0;transform:translate(-50%,-50%)}
+.combo.show{animation:combo 1.5s cubic-bezier(.2,1.4,.4,1) forwards}
+.combo-label{font:italic 44px/1 Georgia,"Times New Roman",serif;letter-spacing:-1.5px;color:#fffdf5;text-shadow:0 2px 0 #52663299,0 6px 22px #39402866;white-space:nowrap;transform:rotate(-4deg)}
+.combo-bonus{margin-top:6px;padding:4px 14px;border-radius:30px;background:#526632;color:#f8f7ec;font:italic 22px Georgia,serif;box-shadow:0 6px 16px #52663240}
+@keyframes combo{0%{opacity:0;transform:translate(-50%,-30%) scale(.4)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.12)}24%{transform:translate(-50%,-50%) scale(1)}75%{opacity:1;transform:translate(-50%,-75%) scale(1)}100%{opacity:0;transform:translate(-50%,-100%) scale(.92)}}
+@media(prefers-reduced-motion:reduce){.combo.show{animation:combo-fade 1.5s forwards}@keyframes combo-fade{0%,80%{opacity:1}100%{opacity:0}}}

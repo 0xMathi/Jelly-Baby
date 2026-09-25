@@ -9,7 +9,7 @@ const ROUND_SECONDS=60;
 const LIVE_FRUITS=5;
 const SPAWN_MIN=.09, SPAWN_MAX=.26, SPAWN_SPREAD=.9, FORGET_BEYOND=.9;
 const JELLY_REACH=.048;
-const CHAIN_WINDOW=1.2, COMBO_EVERY=5;
+const CHAIN_WINDOW=1.2, COMBO_EVERY=5, COMBO_BONUS=3, COMBO_MIN_TOP=175;
 const SCORES_KEY='fruit-rush:scores';
 
 type Live={name:FruitName;root:THREE.Group;fruit:THREE.Group;shadow:THREE.Mesh;age:number;collectedFor:number;phase:number};
@@ -20,6 +20,7 @@ const fruitDots=FRUIT_NAMES.map(name=>`<span style="background:${FRUITS[name].co
 
 export function fruitRushMarkup() {
   return `<div class="hud" hidden><span class="hud-time">1:00</span><span class="hud-dot"></span><span class="hud-score">0</span></div>
+  <div class="combo" aria-live="polite"></div>
   <button class="round-open" type="button" hidden><span class="round-open-dots">${fruitDots}</span>play fruit rush <kbd>enter</kbd></button>
   <section class="round-card" aria-live="polite">
     <button class="round-close" type="button" aria-label="Close and just wander" title="Close · esc">
@@ -29,7 +30,7 @@ export function fruitRushMarkup() {
       <p class="eyebrow">60 seconds</p>
       <h2 class="round-title">Fruit rush</h2>
       <div class="round-dots" aria-hidden="true">${fruitDots}</div>
-      <p class="round-text">Wander, hop and gather fruit.<br>Every bite changes the flavour.</p>
+      <p class="round-text">Wander, hop and gather fruit.<br>Every bite changes the flavour.<br>Chain five quickly for a combo.</p>
     </div>
     <div class="round-result" hidden>
       <p class="eyebrow">time's up</p>
@@ -48,6 +49,7 @@ export class FruitRush {
   private state:State='free';
   private timeLeft=ROUND_SECONDS;
   private score=0;
+  private bonus=0;
   private tally=new Map<FruitName,number>();
   private streak=0;
   private sinceLast=99;
@@ -63,6 +65,8 @@ export class FruitRush {
   private readonly dot=this.hud.querySelector<HTMLSpanElement>('.hud-dot')!;
   private readonly card=document.querySelector<HTMLElement>('.round-card')!;
   private readonly openButton=document.querySelector<HTMLButtonElement>('.round-open')!;
+  private readonly comboLabel=document.querySelector<HTMLDivElement>('.combo')!;
+  private readonly screen=new THREE.Vector3();
   private readonly abort=new AbortController();
   private readonly baby:Baby;
   private readonly optics:RefractiveLightField;
@@ -88,7 +92,7 @@ export class FruitRush {
   }
 
   private start() {
-    this.state='playing';this.timeLeft=ROUND_SECONDS;this.score=0;this.streak=0;this.tally.clear();
+    this.state='playing';this.timeLeft=ROUND_SECONDS;this.score=0;this.bonus=0;this.streak=0;this.tally.clear();
     this.card.hidden=true;this.openButton.hidden=true;this.hud.hidden=false;this.scoreLabel.textContent='0';
     void this.sound.unlock().catch(()=>{});
   }
@@ -109,9 +113,10 @@ export class FruitRush {
     this.card.querySelector<HTMLElement>('.round-result')!.hidden=false;
     this.card.querySelector<HTMLElement>('.round-best')!.hidden=!(this.score>0&&scores[0]===entry);
     this.card.querySelector('.round-score-value')!.textContent=String(this.score);
-    this.card.querySelector('.round-score-unit')!.textContent=this.score===1?'fruit':'fruits';
+    this.card.querySelector('.round-score-unit')!.textContent=this.score===1?'point':'points';
     this.card.querySelector('.round-tally')!.innerHTML=FRUIT_NAMES.filter(name=>this.tally.has(name)).map(name=>
-      `<li><span style="background:${FRUITS[name].color}"></span>${this.tally.get(name)} ${FRUITS[name].label}</li>`).join('');
+      `<li><span style="background:${FRUITS[name].color}"></span>${this.tally.get(name)} ${FRUITS[name].label}</li>`).join('')+
+      (this.bonus?`<li class="round-tally-bonus">+${this.bonus} combo bonus</li>`:'');
     this.renderScores(scores,scores.indexOf(entry));
     this.card.querySelector('.round-start')!.innerHTML='Play again <kbd>enter</kbd>';
     this.card.hidden=false;this.card.classList.remove('pop');void this.card.offsetWidth;this.card.classList.add('pop');
@@ -128,7 +133,7 @@ export class FruitRush {
   private renderScores(scores:Score[],highlight:number) {
     const list=this.card.querySelector<HTMLOListElement>('.round-scores')!;
     list.hidden=scores.length===0;
-    list.innerHTML=scores.map((s,i)=>`<li${i===highlight?' class="current"':''}><span>${s.score} <small>fruit${s.score===1?'':'s'}</small></span><time>${new Date(s.at).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</time></li>`).join('');
+    list.innerHTML=scores.map((s,i)=>`<li${i===highlight?' class="current"':''}><span>${s.score} <small>pt${s.score===1?'':'s'}</small></span><time>${new Date(s.at).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</time></li>`).join('');
   }
 
   private spawn(center:THREE.Vector3) {
@@ -147,22 +152,34 @@ export class FruitRush {
     this.live.push({name,root,fruit,shadow,age:0,collectedFor:-1,phase:Math.random()*6});
   }
 
-  private collect(fruit:Live) {
+  private collect(fruit:Live,center:THREE.Vector3) {
     fruit.collectedFor=0;
+    this.streak=this.sinceLast<CHAIN_WINDOW?this.streak+1:0;this.sinceLast=0;
+    const chain=this.streak+1,combo=chain%COMBO_EVERY===0;
+    // Bonus grows with the chain: x5 +3, x10 +6, x15 +9 ...
+    const bonus=combo&&this.state==='playing'?chain/COMBO_EVERY*COMBO_BONUS:0;
     if(this.state==='playing') {
-      this.score++;this.scoreLabel.textContent=String(this.score);
+      this.score+=1+bonus;this.bonus+=bonus;this.scoreLabel.textContent=String(this.score);
       this.tally.set(fruit.name,(this.tally.get(fruit.name)??0)+1);
     }
-    this.streak=this.sinceLast<CHAIN_WINDOW?this.streak+1:0;this.sinceLast=0;
     this.sound.collect(this.streak);
-    // Every fifth fruit in a quick chain gets the combo fanfare.
-    if(this.streak%COMBO_EVERY===COMBO_EVERY-1)this.sound.combo();
+    if(combo){this.sound.combo();this.showCombo(chain,bonus,center);}
     const look=JELLY_FLAVORS[FRUITS[fruit.name].flavor];
     this.targetColor.set(look.surface);this.targetAbsorption=look.absorption;
     this.dot.style.background=FRUITS[fruit.name].color;
     const specimen=document.querySelector('.specimen');
     if(specimen)specimen.innerHTML=`<span style="background:${FRUITS[fruit.name].color}"></span> ${FRUITS[fruit.name].label} &nbsp; / &nbsp; 7 cm of happiness`;
     this.hud.classList.remove('bump');void this.hud.offsetWidth;this.hud.classList.add('bump');
+  }
+
+  private showCombo(chain:number,bonus:number,center:THREE.Vector3) {
+    // Pop the label just above the jelly's head.
+    this.screen.set(center.x,center.y+.045,center.z).project(this.camera);
+    this.comboLabel.style.left=`${(this.screen.x+1)/2*innerWidth}px`;
+    // Clamp below the HUD so the two never overlap.
+    this.comboLabel.style.top=`${Math.max(COMBO_MIN_TOP,(1-this.screen.y)/2*innerHeight)}px`;
+    this.comboLabel.innerHTML=`<span class="combo-label">combo ×${chain}!</span>${bonus?`<span class="combo-bonus">+${bonus}</span>`:''}`;
+    this.comboLabel.classList.remove('show');void this.comboLabel.offsetWidth;this.comboLabel.classList.add('show');
   }
 
   update(dt:number,center:THREE.Vector3) {
@@ -180,7 +197,7 @@ export class FruitRush {
       const fruit=this.live[i];fruit.age+=dt;
       const dx=fruit.root.position.x-center.x,dz=fruit.root.position.z-center.z,distance=Math.hypot(dx,dz);
       if(fruit.collectedFor<0) {
-        if(distance<JELLY_REACH+FRUITS[fruit.name].radius*.5)this.collect(fruit);
+        if(distance<JELLY_REACH+FRUITS[fruit.name].radius*.5)this.collect(fruit,center);
         else if(distance>FORGET_BEYOND)fruit.collectedFor=0;
         const grow=easeOutBack(Math.min(1,fruit.age/.38)),breathe=Math.sin(fruit.age*2.6+fruit.phase)*.025;
         fruit.fruit.scale.set(grow*(1-breathe*.5),grow*(1+breathe),grow*(1-breathe*.5));
