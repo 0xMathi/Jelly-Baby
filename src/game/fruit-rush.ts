@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { FRUITS, FRUIT_NAMES, type FruitName, makeFruit, makeFruitShadow, disposeFruitAssets } from '../graphics/fruits.ts';
+import { FRUITS, FRUIT_NAMES, type FruitName, makeFruit, makeFruitShadow, disposeFruitAssets, fruitFootprint, SHADOW_SCALE } from '../graphics/fruits.ts';
 import { JELLY_FLAVORS, DEFAULT_JELLY_FLAVOR } from '../graphics/jelly-flavors.ts';
 import type { Baby } from '../graphics/baby.ts';
 import type { RefractiveLightField } from '../graphics/refractive-light.js';
@@ -12,7 +12,7 @@ const JELLY_REACH=.048;
 const CHAIN_WINDOW=1.2, COMBO_EVERY=5, COMBO_BONUS=3, COMBO_MIN_TOP=175;
 const SCORES_KEY='fruit-rush:scores';
 
-type Live={name:FruitName;root:THREE.Group;fruit:THREE.Group;shadow:THREE.Mesh;age:number;collectedFor:number;phase:number};
+type Live={name:FruitName;root:THREE.Group;fruit:THREE.Group;shadow:THREE.Mesh;footprint:number;age:number;collectedFor:number;phase:number};
 type Score={score:number;at:number};
 type State='free'|'playing';
 
@@ -129,7 +129,8 @@ export class FruitRush {
 
   private spawn(center:THREE.Vector3) {
     const name=FRUIT_NAMES[Math.floor(Math.random()*FRUIT_NAMES.length)];
-    const root=new THREE.Group(),fruit=makeFruit(name),shadow=makeFruitShadow(FRUITS[name].radius);
+    const footprint=fruitFootprint(name);
+    const root=new THREE.Group(),fruit=makeFruit(name),shadow=makeFruitShadow(footprint);
     root.add(shadow,fruit);
     // Spawn ahead of the camera so new fruit is (mostly) on screen.
     const facing=Math.atan2(center.z-this.camera.position.z,center.x-this.camera.position.x);
@@ -140,7 +141,7 @@ export class FruitRush {
     }
     fruit.rotation.y=Math.random()*Math.PI*2;fruit.scale.setScalar(0);
     this.group.add(root);
-    this.live.push({name,root,fruit,shadow,age:0,collectedFor:-1,phase:Math.random()*6});
+    this.live.push({name,root,fruit,shadow,footprint,age:0,collectedFor:-1,phase:Math.random()*6});
   }
 
   private collect(fruit:Live,center:THREE.Vector3) {
@@ -188,16 +189,17 @@ export class FruitRush {
       const fruit=this.live[i];fruit.age+=dt;
       const dx=fruit.root.position.x-center.x,dz=fruit.root.position.z-center.z,distance=Math.hypot(dx,dz);
       if(fruit.collectedFor<0) {
-        if(distance<JELLY_REACH+FRUITS[fruit.name].radius*.5)this.collect(fruit,center);
+        // Picked up once the jelly's edge reaches into the fruit's footprint.
+        if(distance<JELLY_REACH+fruit.footprint*.75)this.collect(fruit,center);
         else if(distance>FORGET_BEYOND)fruit.collectedFor=0;
         const grow=easeOutBack(Math.min(1,fruit.age/.38)),breathe=Math.sin(fruit.age*2.6+fruit.phase)*.025;
         fruit.fruit.scale.set(grow*(1-breathe*.5),grow*(1+breathe),grow*(1-breathe*.5));
-        fruit.shadow.scale.setScalar(FRUITS[fruit.name].radius*2.6*Math.min(1,grow));
+        fruit.shadow.scale.setScalar(fruit.footprint*SHADOW_SCALE*Math.min(1,grow));
       } else {
         // Shrink into the jelly (or just vanish when forgotten or the round ended).
         fruit.collectedFor+=dt;
         const t=Math.min(1,fruit.collectedFor/.2),s=(1-t)*(1+t*.4);
-        fruit.fruit.scale.setScalar(s);fruit.shadow.scale.setScalar(FRUITS[fruit.name].radius*2.6*(1-t));
+        fruit.fruit.scale.setScalar(s);fruit.shadow.scale.setScalar(fruit.footprint*SHADOW_SCALE*(1-t));
         if(distance<FORGET_BEYOND)fruit.root.position.set(fruit.root.position.x-dx*t*.35,fruit.root.position.y,fruit.root.position.z-dz*t*.35);
         if(t>=1){this.group.remove(fruit.root);this.live.splice(i,1);}
       }

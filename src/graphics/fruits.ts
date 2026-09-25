@@ -6,16 +6,17 @@ import type { JellyFlavorName } from './jelly-flavors.ts';
 
 type Fruit={readonly flavor:JellyFlavorName;readonly radius:number;readonly color:string;readonly label:string};
 
-// Deliberately oversized and plump next to the 7 cm jelly (real grapes are ~1 cm radius).
+// Oversized and plump next to the 7 cm jelly, but ranked like the real thing:
+// berries < grapes < strawberry < citrus < pear. radius = half the model's largest dimension.
 export const FRUITS={
   strawberry:{flavor:'strawberry',radius:.020,color:'#d7263d',label:'strawberry'},
   grape:{flavor:'grape',radius:.016,color:'#5b2a86',label:'grape'},
-  blueberry:{flavor:'blueberry',radius:.014,color:'#3b4f9c',label:'blueberry'},
-  mandarin:{flavor:'orange',radius:.019,color:'#f28a1a',label:'mandarin'},
-  lemon:{flavor:'lemon',radius:.021,color:'#f2d230',label:'lemon'},
+  blueberry:{flavor:'blueberry',radius:.011,color:'#3b4f9c',label:'blueberry'},
+  mandarin:{flavor:'orange',radius:.024,color:'#f28a1a',label:'mandarin'},
+  lemon:{flavor:'lemon',radius:.028,color:'#f2d230',label:'lemon'},
   greenGrape:{flavor:'lime',radius:.016,color:'#9cc43c',label:'green grape'},
-  pear:{flavor:'pear',radius:.024,color:'#b9cc3f',label:'pear'},
-  raspberry:{flavor:'raspberry',radius:.016,color:'#c8184f',label:'raspberry'},
+  pear:{flavor:'pear',radius:.030,color:'#b9cc3f',label:'pear'},
+  raspberry:{flavor:'raspberry',radius:.012,color:'#c8184f',label:'raspberry'},
 } as const satisfies Record<string,Fruit>;
 
 export type FruitName=keyof typeof FRUITS;
@@ -35,6 +36,7 @@ const SKIN:Record<FruitName,Finish>={
 };
 const SKIN_SATURATION=1.8, SKIN_BRIGHTNESS=.8;
 const templates=new Map<FruitName,THREE.Object3D>();
+const footprints=new Map<FruitName,number>();
 const textures=new Set<THREE.Texture>();
 
 function dress(root:THREE.Object3D,name:FruitName) {
@@ -74,6 +76,9 @@ export async function loadFruits() {
   await Promise.all(FRUIT_NAMES.map(async name=>{
     const gltf=await loader.loadAsync(new URL(`../assets/fruits/${name}.glb`,import.meta.url).href);
     dress(gltf.scene,name);templates.set(name,gltf.scene);
+    // Half-width on the table in model units (a standing pear is much narrower than it is tall).
+    const box=new THREE.Box3().setFromObject(gltf.scene);
+    footprints.set(name,Math.max(box.max.x-box.min.x,box.max.z-box.min.z)/2);
   }));
 }
 
@@ -87,12 +92,20 @@ export function makeFruit(name:FruitName) {
   return group;
 }
 
+export const SHADOW_SCALE=2.6;
 let shadowTexture:THREE.CanvasTexture|null=null;
 const shadowPlane=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2);
 let shadowMaterial:THREE.MeshBasicNodeMaterial|null=null;
 
-/** Soft contact shadow; the scene has no shadow-casting light for props. */
-export function makeFruitShadow(radius:number) {
+/** Half-width of the fruit's footprint on the table, in metres. */
+export function fruitFootprint(name:FruitName) {
+  const footprint=footprints.get(name);
+  if(footprint===undefined)throw new Error('fruitFootprint called before loadFruits');
+  return FRUITS[name].radius*footprint;
+}
+
+/** Soft contact shadow sized to the footprint; the scene has no shadow-casting light for props. */
+export function makeFruitShadow(footprint:number) {
   if(!shadowMaterial) {
     const canvas=document.createElement('canvas');canvas.width=canvas.height=64;
     const ctx=canvas.getContext('2d')!;
@@ -103,7 +116,7 @@ export function makeFruitShadow(radius:number) {
     shadowMaterial=new THREE.MeshBasicNodeMaterial({map:shadowTexture,transparent:true,depthWrite:false,color:'#3a2a1a'});
   }
   const mesh=new THREE.Mesh(shadowPlane,shadowMaterial);
-  mesh.scale.setScalar(radius*2.6);mesh.position.y=.0002;mesh.renderOrder=0;
+  mesh.scale.setScalar(footprint*SHADOW_SCALE);mesh.position.y=.0002;mesh.renderOrder=0;
   return mesh;
 }
 
@@ -112,7 +125,7 @@ export function disposeFruitAssets() {
   templates.forEach(root=>root.traverse(object=>{
     if(object instanceof THREE.Mesh){object.geometry.dispose();materials.add(object.material as THREE.Material);}
   }));
-  materials.forEach(m=>m.dispose());templates.clear();
+  materials.forEach(m=>m.dispose());templates.clear();footprints.clear();
   textures.forEach(t=>t.dispose());textures.clear();
   shadowPlane.dispose();shadowMaterial?.dispose();shadowTexture?.dispose();
 }
