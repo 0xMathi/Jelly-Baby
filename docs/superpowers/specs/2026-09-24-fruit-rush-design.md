@@ -15,8 +15,8 @@ Portfolio showcase (category AI) built on scottstts/Jelly-Baby (GPL-3.0). The fo
 | strawberry | strawberry (red) |
 | grape | grape (purple, new) |
 | blueberry | blueberry |
-| kumquat | orange (new) |
-| mirabelle | lemon (yellow) |
+| mandarin | orange (new) |
+| lemon | lemon (yellow) |
 | green grape | lime |
 
 Fruits are real small fruits but oversized and plump: ~3.5–4.5 cm next to the 7 cm jelly.

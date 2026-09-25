@@ -335,7 +335,7 @@ def berry(name, skin_colours, bloom_colour, bloom_amount, elong, stripes=False):
     g.finish(colour, rough, g.noise(45, 2), bump_strength=0.08)
     def shape(d):
         p = Vector((d.x, d.y, d.z * elong))
-        p += d * noise.noise(d * 2.2) * 0.012
+        p += d * noise.noise(d * 1.4) * 0.035
         if d.z > 0.9:
             p.z -= (d.z - 0.9) * 0.5
         return p
@@ -369,57 +369,68 @@ def blueberry():
     bake(obj, m, g)
     return finish(obj, Matrix.Rotation(math.radians(-35), 4, 'Y'))
 
-def kumquat():
-    m, g = procedural('kumquat-skin')
-    glands = g.voronoi(22, 1.0)                                  # oil glands in the peel
-    pores = g.ramp(glands, [(0.0, 0.0), (0.3, 1.0)])
-    base = g.ramp(g.noise(3.5, 4), [(0.3, (1.0, 0.3, 0.0)), (0.8, (1.0, 0.42, 0.0))])
-    colour = g.mix(g.math('MULTIPLY', g.math('SUBTRACT', 1.0, pores), 0.25), base, (0.85, 0.2, 0.0))
-    stem_end = g.maprange(g.axis('Z'), 1.05, 1.28)
-    colour = g.mix(g.math('MULTIPLY', stem_end, 0.55), colour, (0.42, 0.40, 0.04))
-    rough = g.ramp(pores, [(0.0, 0.42), (1.0, 0.2)])
-    g.finish(colour, rough, pores, bump_strength=0.5, bump_distance=0.02)
-    def shape(d):
-        return Vector((d.x, d.y, d.z * 1.28)) + d * noise.noise(d * 6) * 0.006
-    body = sphere_object('kumquat', m, shape)
-    bake(body, m, g)
-    button = ellipsoid_object('stem', stem_mat, (0.11, 0.11, 0.05), 2)
-    button.location = (0, 0, 1.27)
-    obj = join([body, button, stem(stem_mat, Vector((0, 0, 1.3)), Vector((0.15, 0, 1)), 0.14, 0.03)], 'kumquat')
-    return finish(obj, Matrix.Rotation(math.radians(-82), 4, 'Y'))
+def citrus_peel(g, colours, pit_colour, scale, tip_colour=None, tip_axis=None):
+    """Pitted, glossy citrus peel: oil-gland pits as bump, slightly darker and rougher in the pits."""
+    pits = g.ramp(g.voronoi(scale, 1.0), [(0.0, 0.0), (0.5, 1.0)])      # 0 in a pit, 1 on the peel
+    micro = g.noise(scale * 4, 2)
+    height = g.math('ADD', pits, g.math('MULTIPLY', micro, 0.15))
+    base = g.ramp(g.noise(2.5, 3), [(0.2, colours[0]), (0.9, colours[1])])
+    colour = g.mix(g.math('MULTIPLY', g.math('SUBTRACT', 1.0, pits), 0.45), base, pit_colour)
+    if tip_colour:
+        tips = g.maprange(g.math('ABSOLUTE', tip_axis, 0), 1.15, 1.55)
+        colour = g.mix(g.math('MULTIPLY', tips, 0.6), colour, tip_colour)
+    rough = g.ramp(pits, [(0.0, 0.5), (1.0, 0.24)])
+    g.finish(colour, rough, height, bump_strength=0.9, bump_distance=0.025)
 
-def mirabelle():
-    m, g = procedural('mirabelle-skin')
-    base = g.ramp(g.noise(2.5, 3), [(0.2, (0.95, 0.62, 0.0)), (0.9, (1.0, 0.8, 0.01))])
-    # A sun-kissed blush on one side plus tiny red freckles.
-    side = g.maprange(g.axis('X'), -0.1, 1.0)
-    blush = g.math('MULTIPLY', side, g.ramp(g.noise(2.5, 3), [(0.35, 0.0), (0.7, 0.8)]))
-    colour = g.mix(g.math('MULTIPLY', blush, 0.55), base, (0.9, 0.28, 0.02))
-    freckles = g.ramp(g.voronoi(14, 1.0), [(0.0, 1.0), (0.14, 0.0)])
-    colour = g.mix(g.math('MULTIPLY', freckles, g.math('ADD', 0.35, blush)), colour, (0.7, 0.14, 0.02))
-    bloom = g.bloom(0.1)
-    colour = g.mix(bloom, colour, (0.95, 0.85, 0.6))
-    rough = g.ramp(bloom, [(0.0, 0.3), (0.3, 0.55)])
-    g.finish(colour, rough, g.noise(50, 2), bump_strength=0.06)
+def mandarin():
+    m, g = procedural('mandarin-skin')
+    citrus_peel(g, ((1.0, 0.24, 0.0), (1.0, 0.36, 0.0)), (0.8, 0.13, 0.0), 26)
     def shape(d):
-        p = Vector((d.x, d.y, d.z * 0.96))
+        theta = math.acos(max(-1, min(1, d.z)))
         phi = math.atan2(d.y, d.x)
-        groove = math.exp(-(phi / 0.12) ** 2) * 0.035 * math.sqrt(max(0, 1 - d.z * d.z))
-        p -= d * groove
+        lobes = 1 + 0.02 * math.cos(10 * phi) * math.sin(theta) ** 2     # faint segment bulges
+        p = Vector((d.x * lobes, d.y * lobes, d.z * 0.78))
+        p += d * noise.noise(d * 1.6) * 0.025
         if d.z > 0.9:
-            p.z -= (d.z - 0.9) * 0.6
+            p.z -= (d.z - 0.9) * 0.9                                      # stem dimple
+        if d.z < -0.93:
+            p.z += (-0.93 - d.z) * 0.8                                    # navel
         return p
-    body = sphere_object('mirabelle', m, shape)
+    body = sphere_object('mandarin', m, shape, 192, 144)
     bake(body, m, g)
-    obj = join([body, stem(stem_mat, Vector((0, 0, 0.9)), Vector((0.1, 0, 1)), 0.4, 0.035, 0.5)], 'mirabelle')
-    return finish(obj, Matrix.Rotation(math.radians(-30), 4, 'X'))
+    button = ellipsoid_object('stem', stem_mat, (0.1, 0.1, 0.05), 2)
+    button.location = (0, 0, 0.7)
+    small_leaf = leaf(leaf_mat, 0.55, 0.2)
+    small_leaf.matrix_world = Matrix.Translation((0, 0, 0.73)) @ Matrix.Rotation(0.6, 4, 'Z') @ Matrix.Rotation(0.35, 4, 'Y')
+    obj = join([body, button, small_leaf, stem(stem_mat, Vector((0, 0, 0.72)), Vector((0.1, 0, 1)), 0.1, 0.03)], 'mandarin')
+    return finish(obj, Matrix.Rotation(math.radians(-12), 4, 'Y'))
+
+def lemon():
+    m, g = procedural('lemon-skin')
+    citrus_peel(g, ((1.0, 0.62, 0.0), (1.0, 0.74, 0.0)), (0.9, 0.5, 0.0), 24,
+                tip_colour=(0.55, 0.62, 0.04), tip_axis=g.axis('Z'))
+    def shape(d):
+        p = Vector((d.x, d.y, d.z * 1.3))
+        p += d * noise.noise(d * 1.5) * 0.03
+        # The two lemon tips: a proud nipple on top, a smaller one below.
+        if d.z > 0.88:
+            p.z += 0.34 * ((d.z - 0.88) / 0.12) ** 2
+        if d.z < -0.9:
+            p.z -= 0.2 * ((-d.z - 0.9) / 0.1) ** 2
+        return p
+    body = sphere_object('lemon', m, shape, 192, 144)
+    bake(body, m, g)
+    button = ellipsoid_object('stem', stem_mat, (0.06, 0.06, 0.04), 2)
+    button.location = (0, 0, 1.64)
+    obj = join([body, button], 'lemon')
+    return finish(obj, Matrix.Rotation(math.radians(-84), 4, 'Y'))
 
 builders = {
     'strawberry': strawberry,
     'grape': lambda: berry('grape', ((0.05, 0.0, 0.08), (0.17, 0.02, 0.22)), (0.3, 0.26, 0.42), 0.3, 1.14),
     'blueberry': blueberry,
-    'kumquat': kumquat,
-    'mirabelle': mirabelle,
+    'mandarin': mandarin,
+    'lemon': lemon,
     'greenGrape': lambda: berry('greenGrape', ((0.32, 0.48, 0.06), (0.55, 0.72, 0.16)), (0.75, 0.82, 0.6), 0.14, 1.14, stripes=True),
 }
 

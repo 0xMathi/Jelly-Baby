@@ -11,8 +11,8 @@ export const FRUITS={
   strawberry:{flavor:'strawberry',radius:.020,color:'#d7263d',label:'strawberry'},
   grape:{flavor:'grape',radius:.016,color:'#5b2a86',label:'grape'},
   blueberry:{flavor:'blueberry',radius:.014,color:'#3b4f9c',label:'blueberry'},
-  kumquat:{flavor:'orange',radius:.018,color:'#f28a1a',label:'kumquat'},
-  mirabelle:{flavor:'lemon',radius:.017,color:'#f2c230',label:'mirabelle'},
+  mandarin:{flavor:'orange',radius:.019,color:'#f28a1a',label:'mandarin'},
+  lemon:{flavor:'lemon',radius:.021,color:'#f2d230',label:'lemon'},
   greenGrape:{flavor:'lime',radius:.016,color:'#9cc43c',label:'green grape'},
 } as const satisfies Record<string,Fruit>;
 
@@ -25,8 +25,8 @@ const SKIN:Record<FruitName,Finish>={
   strawberry:{clearcoat:.8,sheen:0},
   grape:{clearcoat:.15,sheen:.15},
   blueberry:{clearcoat:0,sheen:.2},
-  kumquat:{clearcoat:.45,sheen:0},
-  mirabelle:{clearcoat:.25,sheen:0},
+  mandarin:{clearcoat:.5,sheen:0},
+  lemon:{clearcoat:.5,sheen:0},
   greenGrape:{clearcoat:.35,sheen:.08},
 };
 const SKIN_SATURATION=1.8, SKIN_BRIGHTNESS=.8;
