@@ -46,7 +46,9 @@ export async function startGame(stage:(s:string)=>void,fail:(e:unknown)=>void) {
   const input=new Input(camera,renderer.domElement,body,baby.mesh,rig,sound,reset);
   const transport=new OpticalTransport(optics,body,camera,environment.incoming,fail);
   // Dev-only handle for browser playtests. snapshot() renders offscreen, so it works in a hidden tab (README/portfolio shots).
-  if(import.meta.env.DEV)Object.assign(window,{__jelly:{scene,camera,body,game,snapshot:async()=>{
+  if(import.meta.env.DEV)Object.assign(window,{__jelly:{scene,camera,body,game,snapshot:async(width?:number,height?:number)=>{
+    // Optional exact output size (e.g. portfolio formats); the view is restored afterwards.
+    if(width&&height){renderer.setDrawingBufferSize(width,height,1);camera.aspect=width/height;camera.updateProjectionMatrix();}
     const size=renderer.getDrawingBufferSize(new THREE.Vector2()),target=new THREE.RenderTarget(size.x,size.y);
     baby.update(0);optics.update(renderer,body,true);await transport.update();
     // A hidden tab has no animation loop, so advance the node frame by hand or passes reuse the last frame.
@@ -58,7 +60,7 @@ export async function startGame(stage:(s:string)=>void,fail:(e:unknown)=>void) {
     const context=canvas.getContext('2d')!,image=context.createImageData(size.x,size.y),stride=Math.ceil(size.x*4/256)*256;
     // WebGPU pads each row (except the last) to 256 bytes; copy row by row.
     for(let y=0;y<size.y;y++)image.data.set(pixels.subarray(y*stride,y*stride+size.x*4),y*size.x*4);
-    context.putImageData(image,0,0);return canvas.toDataURL('image/png');
+    context.putImageData(image,0,0);if(width&&height)resize();return canvas.toDataURL('image/png');
   }}});
   const resize=()=>resizeView(renderer,camera,input.controls);
   let resizeFrame=0;
