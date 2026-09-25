@@ -32,7 +32,7 @@ On touch devices a joystick and a hop button appear.
 
 ## How it works
 
-- **Fruit changes the flavour.** Strawberry, grape, blueberry, mandarin, lemon and
+- **Fruit changes the flavour.** Strawberry, raspberry, grape, blueberry, mandarin, lemon, pear and
   green grape each crossfade the jelly to their colour: surface tint and light absorption,
   so the refraction and caustics change colour too.
 - **Chains and combos.** Pick fruit up quickly one after another and the pickup chime climbs

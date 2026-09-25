@@ -14,6 +14,8 @@ export const FRUITS={
   mandarin:{flavor:'orange',radius:.019,color:'#f28a1a',label:'mandarin'},
   lemon:{flavor:'lemon',radius:.021,color:'#f2d230',label:'lemon'},
   greenGrape:{flavor:'lime',radius:.016,color:'#9cc43c',label:'green grape'},
+  pear:{flavor:'pear',radius:.024,color:'#b9cc3f',label:'pear'},
+  raspberry:{flavor:'raspberry',radius:.016,color:'#c8184f',label:'raspberry'},
 } as const satisfies Record<string,Fruit>;
 
 export type FruitName=keyof typeof FRUITS;
@@ -28,6 +30,8 @@ const SKIN:Record<FruitName,Finish>={
   mandarin:{clearcoat:.5,sheen:0},
   lemon:{clearcoat:.5,sheen:0},
   greenGrape:{clearcoat:.35,sheen:.08},
+  pear:{clearcoat:.3,sheen:0},
+  raspberry:{clearcoat:.8,sheen:.04},
 };
 const SKIN_SATURATION=1.8, SKIN_BRIGHTNESS=.8;
 const templates=new Map<FruitName,THREE.Object3D>();
@@ -48,6 +52,7 @@ function dress(root:THREE.Object3D,name:FruitName) {
     }
     if(key.startsWith('seed'))return new THREE.MeshPhysicalNodeMaterial({color:'#d9a93a',roughness:.35,clearcoat:.4});
     if(key.startsWith('leaf'))return new THREE.MeshPhysicalNodeMaterial({color:'#3f7d1f',roughness:.5,sheen:.4,sheenColor:new THREE.Color('#b9e28c')});
+    if(key.startsWith('stem-wood'))return new THREE.MeshPhysicalNodeMaterial({color:'#5a3a1c',roughness:.7});
     if(key.startsWith('stem'))return new THREE.MeshPhysicalNodeMaterial({color:'#6d6a2c',roughness:.65});
     throw new Error(`Unexpected material "${key}" in ${name}.glb`);
   };

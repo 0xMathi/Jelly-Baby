@@ -1,5 +1,6 @@
 # Builds the six collectible fruits and exports one GLB each.
 # Run: /Applications/Blender.app/Contents/MacOS/Blender -b -P scripts/blender/fruits.py -- <out_dir> [preview.png]
+# Build only some: FRUITS=pear,raspberry blender -b -P ...
 # Then compress the geometry (the game loads them with the meshopt decoder):
 #   for f in <out_dir>/*.glb; do npx -y gltfpack -i $f -o $f -cc -km -kn; done
 #
@@ -272,6 +273,7 @@ def fib_points(n):
 leaf_mat = plain('leaf', (0.08, 0.30, 0.035), 0.45)
 stem_mat = plain('stem', (0.14, 0.19, 0.05), 0.6)
 seed_mat = plain('seed', (0.85, 0.62, 0.16), 0.3)
+wood_stem_mat = plain('stem-wood', (0.16, 0.09, 0.035), 0.7)
 
 # ---------------------------------------------------------------- fruit
 
@@ -425,6 +427,74 @@ def lemon():
     obj = join([body, button], 'lemon')
     return finish(obj, Matrix.Rotation(math.radians(-84), 4, 'Y'))
 
+def pear():
+    m, g = procedural('pear-skin')
+    base = g.ramp(g.noise(2.2, 3), [(0.2, (0.46, 0.62, 0.04)), (0.9, (0.7, 0.78, 0.08))])
+    # Red cheek on the sunny side.
+    side = g.maprange(g.axis('X'), -0.2, 0.9)
+    blush = g.math('MULTIPLY', side, g.ramp(g.noise(2.0, 4), [(0.25, 0.3), (0.7, 1.0)]))
+    colour = g.mix(g.math('MULTIPLY', blush, 0.8), base, (0.7, 0.1, 0.02))
+    # Lenticels: tiny brown dots all over, plus some russet around the stem.
+    dots = g.ramp(g.voronoi(20, 1.0), [(0.0, 1.0), (0.14, 0.0)])
+    colour = g.mix(g.math('MULTIPLY', dots, 0.8), colour, (0.3, 0.2, 0.06))
+    russet = g.math('MULTIPLY', g.maprange(g.axis('Z'), 1.1, 1.5), g.ramp(g.noise(6, 5), [(0.35, 0.2), (0.7, 1.0)]))
+    colour = g.mix(g.math('MULTIPLY', russet, 0.75), colour, (0.36, 0.26, 0.08))
+    rough = g.ramp(g.math('ADD', dots, russet), [(0.0, 0.34), (1.0, 0.62)])
+    height = g.math('ADD', g.math('MULTIPLY', dots, 0.5), g.noise(45, 2))
+    g.finish(colour, rough, height, bump_strength=0.25, bump_distance=0.015)
+
+    def smooth(a, b, x):
+        t = max(0.0, min(1.0, (x - a) / (b - a)))
+        return t * t * (3 - 2 * t)
+    def shape(d):
+        t = d.z                                               # -1 bottom .. +1 top
+        # Full belly below, a waist around the upper third, a rounded shoulder on top.
+        w = 1 - 0.44 * smooth(-0.3, 0.55, t) + 0.26 * smooth(0.55, 1.0, t)
+        z = t + 0.6 * max(0.0, t) ** 1.5                      # stretch the neck, smooth at the equator
+        p = Vector((d.x * w, d.y * w, z))
+        p += d * noise.noise(d * 1.3) * 0.035                 # no two pears are the same
+        if t < -0.93:
+            p.z += (-0.93 - t) * 0.9                          # sits flat on the table
+        if t > 0.95:
+            p.z -= (t - 0.95) * 1.6                           # stem dimple
+        return p
+    body = sphere_object('pear', m, shape, 160, 160)
+    bake(body, m, g)
+    top = Vector((0, 0, 1.52))
+    pear_stem = stem(wood_stem_mat, top, Vector((0.25, 0, 1)), 0.42, 0.045, 0.6)
+    pear_leaf = leaf(leaf_mat, 0.75, 0.24)
+    pear_leaf.matrix_world = Matrix.Translation(top + Vector((0.06, 0, 0.14))) @ Matrix.Rotation(-0.8, 4, 'Z') @ Matrix.Rotation(-0.35, 4, 'Y')
+    obj = join([body, pear_stem, pear_leaf], 'pear')
+    return finish(obj, Matrix.Rotation(math.radians(8), 4, 'Y'))
+
+def raspberry():
+    m, g = procedural('raspberry-skin')
+    geometry = g.node('ShaderNodeNewGeometry')
+    # Pointiness (mesh curvature) darkens the crevices between drupelets.
+    crevice = g.ramp(geometry.outputs['Pointiness'], [(0.46, 0.0), (0.54, 1.0)])
+    tint = g.ramp(g.noise(7, 2), [(0.25, (0.2, 0.0, 0.03)), (0.8, (0.36, 0.004, 0.06))])
+    colour = g.mix(crevice, (0.05, 0.0, 0.01), tint)
+    rough = g.ramp(crevice, [(0.0, 0.5), (1.0, 0.14)])
+    g.finish(colour, rough, g.noise(12, 2), bump_strength=0.03)
+
+    drupelets = [p for p in fib_points(140) if p.z > -0.78]
+    cos_limit = math.cos(0.18)
+    def shape(d):
+        p = Vector((d.x, d.y, d.z * 1.12))
+        best = 0.0
+        for c in drupelets:
+            dot = d.dot(c)
+            if dot > cos_limit:
+                a = math.acos(min(1.0, dot)) / 0.18
+                best = max(best, math.sqrt(max(0.0, 1 - a * a)))
+        p += d * 0.1 * best                                   # one round bump per drupelet
+        if d.z < -0.82:
+            p -= d * 0.5 * ((-0.82 - d.z) / 0.18)             # the hollow where it left the plant
+        return p
+    body = sphere_object('raspberry', m, shape, 192, 160)
+    bake(body, m, g)
+    return finish(body, Matrix.Rotation(math.radians(-70), 4, 'Y'))
+
 builders = {
     'strawberry': strawberry,
     'grape': lambda: berry('grape', ((0.05, 0.0, 0.08), (0.17, 0.02, 0.22)), (0.3, 0.26, 0.42), 0.3, 1.14),
@@ -432,11 +502,19 @@ builders = {
     'mandarin': mandarin,
     'lemon': lemon,
     'greenGrape': lambda: berry('greenGrape', ((0.32, 0.48, 0.06), (0.55, 0.72, 0.16)), (0.75, 0.82, 0.6), 0.14, 1.14, stripes=True),
+    'pear': pear,
+    'raspberry': raspberry,
 }
 
+only = [n for n in os.environ.get('FRUITS', '').split(',') if n]
+unknown = [n for n in only if n not in builders]
+if unknown:
+    raise SystemExit(f'unknown fruit(s): {unknown}')
 os.makedirs(OUT, exist_ok=True)
 built = []
 for name, build in builders.items():
+    if only and name not in only:
+        continue
     obj = build()
     bpy.ops.object.select_all(action='DESELECT'); obj.select_set(True)
     bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, name + '.glb'), use_selection=True,
@@ -448,7 +526,7 @@ for name, build in builders.items():
 
 if PREVIEW:
     for i, obj in enumerate(built):
-        obj.location.x = (i - 2.5) * 2.4
+        obj.location.x = (i - (len(built) - 1) / 2) * 2.3
     scene.cycles.samples = 64
     scene.render.resolution_x, scene.render.resolution_y = 2400, 700
     world = bpy.data.worlds.new('w'); world.use_nodes = True
@@ -461,7 +539,7 @@ if PREVIEW:
     floor = bpy.data.meshes.new('floor'); bm = bmesh.new(); bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=40); bm.to_mesh(floor)
     f = bpy.data.objects.new('floor', floor); bpy.context.collection.objects.link(f)
     f.data.materials.append(plain('floor', (0.75, 0.6, 0.45), 0.6))
-    cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); cam.data.lens = 42
+    cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); cam.data.lens = 32
     bpy.context.collection.objects.link(cam); scene.camera = cam
     cam.location = (0, -17, 4.5); cam.rotation_euler = (math.radians(78), 0, 0)
     scene.render.filepath = PREVIEW
