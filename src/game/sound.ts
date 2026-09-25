@@ -93,6 +93,38 @@ export class JellySound {
       }
     }
   }
+  /** Combo fanfare: a quick rising major arpeggio that lands on a shimmering top note. */
+  combo() {
+    const ctx=this.context, out=this.master;
+    if(!ctx||!out||ctx.state==='closed'||this.muted) return;
+    const t=ctx.currentTime+.11; // let the pickup chime ring first
+    [1046.5,1318.5,1568,2093,2637].forEach((note,i)=>{
+      const last=i===4, at=t+i*.065, length=last?.9:.16;
+      for(const [type,level] of [['square',.03],['triangle',.1]] as const) {
+        const osc=ctx.createOscillator(), gain=ctx.createGain();
+        osc.type=type;osc.frequency.value=note;
+        if(last) {
+          // Gentle vibrato on the held note.
+          const lfo=ctx.createOscillator(), depth=ctx.createGain();
+          lfo.frequency.value=7;depth.gain.value=note*.012;lfo.connect(depth).connect(osc.frequency);
+          lfo.start(at);lfo.stop(at+length);lfo.onended=()=>{lfo.disconnect();depth.disconnect();};
+        }
+        gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(level,at+.006);
+        gain.gain.exponentialRampToValueAtTime(.0001,at+length);
+        osc.connect(gain).connect(out);osc.start(at);osc.stop(at+length+.05);
+        osc.onended=()=>{osc.disconnect();gain.disconnect();};
+      }
+    });
+    // Sparkle: a few tiny high blips scattered over the tail.
+    for(let i=0;i<6;i++) {
+      const osc=ctx.createOscillator(), gain=ctx.createGain(), at=t+.3+i*.07+Math.random()*.03;
+      osc.type='sine';osc.frequency.value=3500+Math.random()*2500;
+      gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.035,at+.003);
+      gain.gain.exponentialRampToValueAtTime(.0001,at+.12);
+      osc.connect(gain).connect(out);osc.start(at);osc.stop(at+.15);
+      osc.onended=()=>{osc.disconnect();gain.disconnect();};
+    }
+  }
   /** Short falling tone when the round ends. */
   roundOver() {
     const ctx=this.context, out=this.master;

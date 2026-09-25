@@ -9,6 +9,7 @@ const ROUND_SECONDS=60;
 const LIVE_FRUITS=5;
 const SPAWN_MIN=.09, SPAWN_MAX=.26, SPAWN_SPREAD=.9, FORGET_BEYOND=.9;
 const JELLY_REACH=.048;
+const CHAIN_WINDOW=1.2, COMBO_EVERY=5;
 const SCORES_KEY='fruit-rush:scores';
 
 type Live={name:FruitName;root:THREE.Group;fruit:THREE.Group;shadow:THREE.Mesh;age:number;collectedFor:number;phase:number};
@@ -152,8 +153,10 @@ export class FruitRush {
       this.score++;this.scoreLabel.textContent=String(this.score);
       this.tally.set(fruit.name,(this.tally.get(fruit.name)??0)+1);
     }
-    this.streak=this.sinceLast<1.2?this.streak+1:0;this.sinceLast=0;
+    this.streak=this.sinceLast<CHAIN_WINDOW?this.streak+1:0;this.sinceLast=0;
     this.sound.collect(this.streak);
+    // Every fifth fruit in a quick chain gets the combo fanfare.
+    if(this.streak%COMBO_EVERY===COMBO_EVERY-1)this.sound.combo();
     const look=JELLY_FLAVORS[FRUITS[fruit.name].flavor];
     this.targetColor.set(look.surface);this.targetAbsorption=look.absorption;
     this.dot.style.background=FRUITS[fruit.name].color;
