@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { saturation, vertexColor } from 'three/tsl';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { saturation, texture } from 'three/tsl';
 import type { JellyFlavorName } from './jelly-flavors.ts';
 
 type Fruit={readonly flavor:JellyFlavorName;readonly radius:number;readonly color:string;readonly label:string};
@@ -18,27 +19,31 @@ export const FRUITS={
 export type FruitName=keyof typeof FRUITS;
 export const FRUIT_NAMES=Object.keys(FRUITS) as FruitName[];
 
-type Finish={roughness:number;clearcoat:number;sheen:number};
-// Glossy skins get clearcoat; grapes and blueberries get a dusty sheen "bloom".
+type Finish={clearcoat:number;sheen:number};
+// Colour, roughness and surface detail come baked from Blender; these add the layers glTF can't carry.
 const SKIN:Record<FruitName,Finish>={
-  strawberry:{roughness:.28,clearcoat:.8,sheen:0},
-  grape:{roughness:.42,clearcoat:.25,sheen:.25},
-  blueberry:{roughness:.55,clearcoat:0,sheen:.35},
-  kumquat:{roughness:.26,clearcoat:.7,sheen:0},
-  mirabelle:{roughness:.36,clearcoat:.4,sheen:.12},
-  greenGrape:{roughness:.3,clearcoat:.4,sheen:.12},
+  strawberry:{clearcoat:.8,sheen:0},
+  grape:{clearcoat:.15,sheen:.15},
+  blueberry:{clearcoat:0,sheen:.2},
+  kumquat:{clearcoat:.45,sheen:0},
+  mirabelle:{clearcoat:.25,sheen:0},
+  greenGrape:{clearcoat:.35,sheen:.08},
 };
 const SKIN_SATURATION=1.8, SKIN_BRIGHTNESS=.8;
 const templates=new Map<FruitName,THREE.Object3D>();
+const textures=new Set<THREE.Texture>();
 
 function dress(root:THREE.Object3D,name:FruitName) {
   const cache=new Map<string,THREE.MeshPhysicalNodeMaterial>();
-  const make=(key:string)=>{
+  const make=(key:string,loaded:THREE.MeshStandardMaterial)=>{
     const skin=SKIN[name];
     if(key.startsWith('skin')) {
-      const material=new THREE.MeshPhysicalNodeMaterial({roughness:skin.roughness,clearcoat:skin.clearcoat,clearcoatRoughness:.12,sheen:skin.sheen,sheenRoughness:.6,sheenColor:new THREE.Color('#dfe6ff')});
+      if(!loaded.map||!loaded.normalMap||!loaded.roughnessMap)throw new Error(`${name}.glb skin is missing its baked textures`);
+      [loaded.map,loaded.normalMap,loaded.roughnessMap].forEach(t=>textures.add(t));
+      const material=new THREE.MeshPhysicalNodeMaterial({roughness:1,roughnessMap:loaded.roughnessMap,normalMap:loaded.normalMap,normalScale:loaded.normalScale.clone(),
+        clearcoat:skin.clearcoat,clearcoatRoughness:.12,sheen:skin.sheen,sheenRoughness:.6,sheenColor:new THREE.Color('#dfe6ff')});
       // AgX output desaturates bright albedo; pre-boost so fruit reads as vividly as it does in Blender.
-      material.colorNode=saturation(vertexColor(),SKIN_SATURATION).mul(SKIN_BRIGHTNESS);
+      material.colorNode=saturation(texture(loaded.map),SKIN_SATURATION).mul(SKIN_BRIGHTNESS);
       return material;
     }
     if(key.startsWith('seed'))return new THREE.MeshPhysicalNodeMaterial({color:'#d9a93a',roughness:.35,clearcoat:.4});
@@ -48,17 +53,19 @@ function dress(root:THREE.Object3D,name:FruitName) {
   };
   root.traverse(object=>{
     if(!(object instanceof THREE.Mesh))return;
-    const key=(object.material as THREE.Material).name;
-    (object.material as THREE.Material).dispose();
+    const loaded=object.material as THREE.MeshStandardMaterial,key=loaded.name;
     let material=cache.get(key);
-    if(!material){material=make(key);cache.set(key,material);}
+    if(!material){material=make(key,loaded);cache.set(key,material);}
+    // Textures now belong to the new material; only the loader's material shell goes.
+    loaded.dispose();
     object.material=material;
   });
 }
 
 /** Loads the Blender-built fruit models (scripts/blender/fruits.py); call once before makeFruit. */
 export async function loadFruits() {
-  const loader=new GLTFLoader();
+  // The GLBs are meshopt-compressed with gltfpack (see scripts/blender/fruits.py).
+  const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   await Promise.all(FRUIT_NAMES.map(async name=>{
     const gltf=await loader.loadAsync(new URL(`../assets/fruits/${name}.glb`,import.meta.url).href);
     dress(gltf.scene,name);templates.set(name,gltf.scene);
@@ -101,5 +108,6 @@ export function disposeFruitAssets() {
     if(object instanceof THREE.Mesh){object.geometry.dispose();materials.add(object.material as THREE.Material);}
   }));
   materials.forEach(m=>m.dispose());templates.clear();
+  textures.forEach(t=>t.dispose());textures.clear();
   shadowPlane.dispose();shadowMaterial?.dispose();shadowTexture?.dispose();
 }
